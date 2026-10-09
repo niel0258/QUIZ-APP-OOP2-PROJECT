@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QApplication,
@@ -14,8 +14,10 @@ from PyQt6.QtWidgets import (
     QFrame,
     QStackedWidget,
     QGraphicsDropShadowEffect,
+    QMessageBox,
 )
- 
+from users import verify_user, create_user
+
 WINDOW_SIZE = (980, 550)  
 
 LOGIN_THEME = ("#8B2630", "#370404", "#fff")  
@@ -51,6 +53,8 @@ def _page_style(c1: str, c2: str, text: str) -> str:
  
  
 class LoginUI(QWidget):
+    logged_in = pyqtSignal(str, str)
+    
     def __init__(self, parent=None):
         super().__init__(parent)
  
@@ -61,9 +65,9 @@ class LoginUI(QWidget):
  
         # Build UI Screens
         self.pages.addWidget(self._create_register_page())  
-        self.pages.addWidget(self._create_login_page())     # Index 1
- 
-
+        self.pages.addWidget(self._create_login_page())   
+        
+        
     # ----page builder (header, title, hint, card, button, link)-----
 
     def _build_page(self, theme, title, hint, rows, btn_text, on_btn, link_text, on_link) -> QWidget:
@@ -109,7 +113,7 @@ class LoginUI(QWidget):
         grid = QGridLayout(card)
         grid.setContentsMargins(14, 14, 14, 14)
         grid.setVerticalSpacing(14)
-        card_title = QLabel(" ")
+        card_title = QLabel("  ")
         card_title.setObjectName("cardTitle")
         card_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         grid.addWidget(card_title, 0, 0, 1, 2)
@@ -154,9 +158,30 @@ class LoginUI(QWidget):
 
     # -----------------------------PAGE 0: Register----------------------
     
+    def do_register(self):
+        username = self.reg_user.text().strip()
+        password = self.reg_pass.text()
+        role = self.reg_role.currentText()
+ 
+        if not username or not password:
+            QMessageBox.critical(self, "Missing Information", "Username and password are required.")
+        elif len(password) < 6:
+            QMessageBox.critical(self, "Weak Password", "Password must be at least 6 characters.")
+        elif not create_user(username, password, role):
+            QMessageBox.critical(self, "Username Taken", "That username already exists.")
+        else:
+            QMessageBox.information(self, "Account Created", "Account created! You can now log in.")
+            self.reg_user.clear()
+            self.reg_pass.clear()
+            self.login_user.setText(username)        
+            self.pages.setCurrentIndex(1)
+            
+            
     def _create_register_page(self) -> QWidget:
         self.reg_user = QLineEdit()
         self.reg_pass = _password_field()
+        self.reg_pass.setPlaceholderText("(min. 6 characters)") 
+        self.reg_pass.returnPressed.connect(self.do_register)
         self.reg_role = QComboBox()
         self.reg_role.addItems(["Student", "Teacher"])
  
@@ -165,16 +190,36 @@ class LoginUI(QWidget):
             "Register",
             "Please Register to Login",
             [("Username", self.reg_user), ("Password", self.reg_pass), ("Role", self.reg_role)],
-            "Sign-up",
-            lambda: self.pages.setCurrentIndex(1),   # next page: Login
+            "Sign-up", self.do_register,
             "Already have an account? Log in",
-            lambda: self.pages.setCurrentIndex(1),
+            lambda: self.pages.setCurrentIndex(1),   
+            
         )
+        
  
     # -----------------------------PAGE 1: Login----------------------
+    def do_login(self):
+        username = self.login_user.text().strip()
+        password = self.login_pass.text()
+ 
+        if not username or not password:
+            QMessageBox.critical(self, "Missing Information", "Enter your username and password.")
+            return
+ 
+        role = verify_user(username, password)      
+        if role is None:
+            QMessageBox.critical(self, "Login Failed", "Incorrect username or password.")
+            self.login_pass.clear()
+            return
+ 
+        self.reset()
+        self.logged_in.emit(username, role)  
+    
+    
     def _create_login_page(self) -> QWidget:
         self.login_user = QLineEdit()
         self.login_pass = _password_field()
+        self.login_pass.returnPressed.connect(self.do_login)
  
         return self._build_page(
             LOGIN_THEME,
@@ -182,18 +227,29 @@ class LoginUI(QWidget):
             "Please Log in to continue",
             [("Username", self.login_user), ("Password", self.login_pass)],
             "Log-in",
-            None,                                     # no login logic yet
+            self.do_login,                                     
             "Create an account",
-            lambda: self.pages.setCurrentIndex(0),    # back to Register
+            lambda: self.pages.setCurrentIndex(0),   
         )
- 
+        
+
+    def reset(self):
+        """Clear all fields and go back to the Register page (call this on log out)."""
+        for w in (self.reg_user, self.reg_pass, self.login_user, self.login_pass):
+            w.clear()
+        self.reg_role.setCurrentIndex(0)
+        self.pages.setCurrentIndex(0)
+        
  
 if __name__ == "__main__":
+    from users import initialize_storage
+    initialize_storage()   
     app = QApplication(sys.argv)
  
     window = LoginUI()
     window.resize(*WINDOW_SIZE)
     window.setWindowTitle("Quiz App")
+    window.logged_in.connect(lambda u, r: print("Logged in:", u, r))
     window.show()
  
     sys.exit(app.exec())
