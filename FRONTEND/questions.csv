@@ -1,0 +1,11 @@
+Question Type,Question,Option 1,Option 2,Option 3,Option 4,Correct Option
+MCQ,Which language is primarily used for PyQt development?,Java,Python,C++,JavaScript,Python
+MCQ,What layout class arranges widgets horizontally in PyQt6?,QVBoxLayout,QGridLayout,QHBoxLayout,QFormLayout,QHBoxLayout
+MCQ,Which company originally created Qt?,Nokia,Trolltech,The Qt Company,Microsoft,Trolltech
+MCQ,Which method is used to show a window in PyQt6?,window.display(),window.show(),window.open(),window.render(),window.show()
+MCQ,Which widget is best suited for single-line text input?,QLineEdit,QTextEdit,QLabel,QPlainTextEdit,QLineEdit
+T&F,Is Python dynamically typed?,True,False,,,True
+T&F,Does HTML stand for HyperText Markup Language?,True,False,,,True
+T&F,Is QVBoxLayout used to arrange widgets in a vertical column?,True,False,,,True
+T&F,Can a QButtonGroup hold multiple selected buttons if non-exclusive?,True,False,,,True
+T&F,Is PyQt6 completely backward compatible with PyQt5 code without any changes?,True,False,,,False
