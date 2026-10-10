@@ -6,18 +6,21 @@ from PyQt6.QtWidgets import (
     QLabel, QPushButton, QRadioButton, QFrame, QButtonGroup, QScrollArea, QMessageBox
 )
 
+import styles as st
+
 class QuizApp(QMainWindow):
     def __init__(self, csv_filepath):
         super().__init__()
         self.setWindowTitle("Quiz Taking")
         self.resize(1280, 720)
 
-        #Load questions
+        self.quiz_title = "Quiz"
+        self.subject_name = "Subject"
+
         self.questions = self.load_questions(csv_filepath)
         self.totalQuestions = len(self.questions)
         self.currentQuestion = 0
 
-        #Selected answer dictionary
         self.user_answers = {}
 
         self.option_frames = []
@@ -31,41 +34,46 @@ class QuizApp(QMainWindow):
         self.display_question(self.currentQuestion)
 
     def load_questions(self, filepath):
-            questions = []
-            type_mapping = {
-                "MCQ": "Multiple Choice",
-                "T&F": "True or False",
-            }
-            try:
-                with open(filepath, mode='r', encoding='utf-8') as file:
-                    reader = csv.DictReader(file)
-                    for row in reader:
-                        raw_type = row['Question Type'].strip()
-                        
-                        q_type = type_mapping.get(raw_type.upper(), raw_type)
+        questions = []
+        type_mapping = {
+            "MCQ": "Multiple Choice",
+            "T&F": "True or False",
+        }
+        try:
+            with open(filepath, mode='r', encoding='utf-8') as file:
+                reader = csv.DictReader(file)
+                for i, row in enumerate(reader):
+                    if i == 0:
+                        if 'Quiz Title' in row and row['Quiz Title'].strip():
+                            self.quiz_title = row['Quiz Title'].strip()
+                        if 'Subject Name' in row and row['Subject Name'].strip():
+                            self.subject_name = row['Subject Name'].strip()
 
-                        options = [
-                            row['Option 1'].strip(),
-                            row['Option 2'].strip(),
-                            row['Option 3'].strip(),
-                            row['Option 4'].strip()
-                        ]
-                        options = [opt for opt in options if opt]
+                    raw_type = row.get('Question Type', '').strip()
+                    q_type = type_mapping.get(raw_type.upper(), raw_type)
 
-                        questions.append({
-                            "type": q_type,
-                            "question": row['Question'].strip(),
-                            "options": options,
-                            "correct": row['Correct Option'].strip()
-                        })
-            except Exception as e:
-                print(f"Error loading CSV file: {e}")
-            return questions
+                    options = [
+                        row.get('Option 1', '').strip(),
+                        row.get('Option 2', '').strip(),
+                        row.get('Option 3', '').strip(),
+                        row.get('Option 4', '').strip()
+                    ]
+                    options = [opt for opt in options if opt]
+
+                    questions.append({
+                        "type": q_type,
+                        "question": row.get('Question', '').strip(),
+                        "options": options,
+                        "correct": row.get('Correct Option', '').strip()
+                    })
+        except Exception as e:
+            print(f"Error loading CSV file: {e}")
+        return questions
 
     def UI(self):
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
-        central_widget.setStyleSheet("background-color: #f4f6f8;")
+        central_widget.setStyleSheet(st.MAIN_WINDOW)
 
         main_layout = QHBoxLayout(central_widget)
         main_layout.setContentsMargins(20, 20, 20, 20)
@@ -77,42 +85,62 @@ class QuizApp(QMainWindow):
         left_layout.setSpacing(12)
 
         quiz_card = QFrame()
-        quiz_card.setStyleSheet("""
-            QFrame {
-                background-color: #ffffff;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-            }
-        """)
-        self.card_layout = QVBoxLayout(quiz_card)
-        self.card_layout.setContentsMargins(24, 20, 24, 24)
+        quiz_card.setStyleSheet(st.CARD_FRAME)
+        
+        card_outer_layout = QVBoxLayout(quiz_card)
+        card_outer_layout.setContentsMargins(0, 0, 0, 0)
+        card_outer_layout.setSpacing(0)
 
-        card_top = QHBoxLayout()
+        ribbon_frame = QFrame()
+        ribbon_frame.setStyleSheet(st.RIBBON_CONTAINER)
+        
+        ribbon_layout = QHBoxLayout(ribbon_frame)
+        ribbon_layout.setContentsMargins(24, 16, 24, 16)
+
+        ribbon_left = QVBoxLayout()
+        ribbon_left.setSpacing(4)
+
+        self.ribbon_title = QLabel(self.quiz_title)
+        self.ribbon_title.setStyleSheet(st.LABEL_RIBBON_TITLE)
+
+        self.ribbon_subtitle = QLabel(self.subject_name)
+        self.ribbon_subtitle.setStyleSheet(st.LABEL_RIBBON_SUBTITLE)
+
+        ribbon_left.addWidget(self.ribbon_title)
+        ribbon_left.addWidget(self.ribbon_subtitle)
+
+        ribbon_right = QVBoxLayout()
+        ribbon_right.setSpacing(4)
+        ribbon_right.setAlignment(Qt.AlignmentFlag.AlignRight)
+
         self.q_count_label = QLabel(f"Question 1 of {self.totalQuestions}")
-        self.q_count_label.setStyleSheet("color: #64748b; font-size: 13px; font-weight: bold; border: none;")
-        card_top.addWidget(self.q_count_label)
-        card_top.addStretch()
-        self.card_layout.addLayout(card_top)
+        self.q_count_label.setStyleSheet("color: #ffffff; font-size: 14px; font-weight: bold; border: none;")
+        self.q_count_label.setAlignment(Qt.AlignmentFlag.AlignRight)
 
-        subheader = QHBoxLayout()
         self.q_type_label = QLabel("Multiple Choice")
-        self.q_type_label.setStyleSheet("color: #334155; font-size: 13px; font-weight: bold; border: none;")
-        subheader.addWidget(self.q_type_label)
-        subheader.addStretch()
-        self.card_layout.addLayout(subheader)
+        self.q_type_label.setStyleSheet("color: #f2c2c5; font-size: 13px; font-weight: bold; border: none;")
+        self.q_type_label.setAlignment(Qt.AlignmentFlag.AlignRight)
 
-        divider = QFrame()
-        divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setStyleSheet("background-color: #f1f5f9; border: none; min-height: 1px; max-height: 1px;")
-        self.card_layout.addWidget(divider)
+        ribbon_right.addWidget(self.q_count_label)
+        ribbon_right.addWidget(self.q_type_label)
+
+        ribbon_layout.addLayout(ribbon_left)
+        ribbon_layout.addStretch()
+        ribbon_layout.addLayout(ribbon_right)
+
+        card_outer_layout.addWidget(ribbon_frame)
+
+        self.card_layout = QVBoxLayout()
+        self.card_layout.setContentsMargins(24, 20, 24, 24)
+        self.card_layout.setSpacing(10)
 
         self.q_title = QLabel("Question")
         self.q_title.setWordWrap(True)
-        self.q_title.setStyleSheet("color: #0f172a; font-size: 20px; font-weight: bold; border: none; margin-top: 10px;")
+        self.q_title.setStyleSheet(st.LABEL_TITLE)
         self.card_layout.addWidget(self.q_title)
 
         q_sub = QLabel("Select one answer.")
-        q_sub.setStyleSheet("color: #64748b; font-size: 13px; border: none; margin-bottom: 10px;")
+        q_sub.setStyleSheet(st.LABEL_MUTED + " margin-bottom: 10px;")
         self.card_layout.addWidget(q_sub)
 
         self.options_container = QWidget()
@@ -127,38 +155,17 @@ class QuizApp(QMainWindow):
         self.card_layout.addWidget(self.options_container)
         self.card_layout.addStretch()
 
+        card_outer_layout.addLayout(self.card_layout)
         left_layout.addWidget(quiz_card)
 
         action_bar = QHBoxLayout()
         
         self.btn_prev = QPushButton("Previous")
-        self.btn_prev.setStyleSheet("""
-            QPushButton {
-                background-color: #ffffff;
-                color: #334155;
-                border: 1px solid #cbd5e1;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: 500;
-            }
-            QPushButton:hover { background-color: #f1f5f9; }
-            QPushButton:disabled { background-color: #e2e8f0; color: #94a3b8; }
-        """)
+        self.btn_prev.setStyleSheet(st.BTN_SECONDARY)
         self.btn_prev.clicked.connect(self.prev_question)
 
         self.btn_next = QPushButton("Next")
-        self.btn_next.setStyleSheet("""
-            QPushButton {
-                background-color: #6b1d24;
-                color: #ffffff;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 20px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background-color: #52151b; }
-            QPushButton:disabled { background-color: #d19ba0; }
-        """)
+        self.btn_next.setStyleSheet(st.BTN_PRIMARY)
         self.btn_next.clicked.connect(self.handle_next_or_submit)
 
         action_bar.addWidget(self.btn_prev)
@@ -173,23 +180,17 @@ class QuizApp(QMainWindow):
         right_layout.setSpacing(12)
 
         sidebar = QFrame()
-        sidebar.setStyleSheet("""
-            QFrame {
-                background-color: #ffffff;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-            }
-        """)
+        sidebar.setStyleSheet(st.CARD_FRAME)
         top_layout = QVBoxLayout(sidebar)
         top_layout.setContentsMargins(16, 16, 16, 16)
         top_layout.setSpacing(12)
 
         nav_header = QHBoxLayout()
         nav_title = QLabel("Quiz navigation")
-        nav_title.setStyleSheet("font-size: 15px; font-weight: bold; color: #0f172a; border: none;")
+        nav_title.setStyleSheet(st.LABEL_SIDEBAR_HEADER)
         
         self.answered_count = QLabel("0 answered")
-        self.answered_count.setStyleSheet("font-size: 12px; font-weight: bold; color: #ca8a04; border: none;")
+        self.answered_count.setStyleSheet(st.LABEL_COUNTER_ACTIVE)
         
         nav_header.addWidget(nav_title)
         nav_header.addStretch()
@@ -198,7 +199,7 @@ class QuizApp(QMainWindow):
 
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
+        scroll_area.setStyleSheet(st.SIDEBAR_SCROLL_AREA)
 
         list_widget = QWidget()
         list_layout = QVBoxLayout(list_widget)
@@ -216,7 +217,6 @@ class QuizApp(QMainWindow):
         scroll_area.setWidget(list_widget)
         top_layout.addWidget(scroll_area)
 
-        
         right_layout.addWidget(sidebar)
 
         main_layout.addWidget(left_container, 8)
@@ -247,7 +247,7 @@ class QuizApp(QMainWindow):
 
             is_selected = (self.user_answers.get(index) == i)
             radio.setChecked(is_selected)
-            self.set_frame_style(opt_frame, is_selected=is_selected)
+            opt_frame.setStyleSheet(st.option_frame(is_selected))
 
             opt_layout.addWidget(radio)
             self.options_layout.addWidget(opt_frame)
@@ -273,82 +273,19 @@ class QuizApp(QMainWindow):
 
             if is_current:
                 btn.setText(f"   ●   Question {idx + 1}")
-                btn.setStyleSheet("""
-                    QPushButton {
-                        text-align: left; padding: 8px 12px;
-                        background-color: #fcf2f3; color: #6b1d24;
-                        border: 1px solid #f2c2c5; border-radius: 6px;
-                        font-weight: bold; font-size: 13px;
-                    }
-                """)
+                btn.setStyleSheet(st.nav_button("current"))
             elif is_answered:
                 btn.setText(f"   ✓   Question {idx + 1}")
-                btn.setStyleSheet("""
-                    QPushButton {
-                        text-align: left; padding: 8px 12px;
-                        background-color: #fef9c3; color: #ca8a04;
-                        border: 1px solid #facc15; border-radius: 6px;
-                        font-weight: 500; font-size: 13px;
-                    }
-                """)
+                btn.setStyleSheet(st.nav_button("answered"))
             else:
                 btn.setText(f"   ○   Question {idx + 1}")
-                btn.setStyleSheet("""
-                    QPushButton {
-                        text-align: left; padding: 8px 12px;
-                        background-color: #ffffff; color: #64748b;
-                        border: 1px solid #f1f5f9; border-radius: 6px;
-                        font-size: 13px;
-                    }
-                    QPushButton:hover { background-color: #f8fafc; border-color: #cbd5e1; }
-                """)
-
-    def set_frame_style(self, frame, is_selected):
-        if is_selected:
-            frame.setStyleSheet("""
-                QFrame {
-                    background-color: #fcf2f3;
-                    border: 2px solid #6b1d24;
-                    border-radius: 8px;
-                }
-                QRadioButton {
-                    color: #52151b;
-                    font-size: 14px;
-                    font-weight: bold;
-                    border: none;
-                }
-                QRadioButton::indicator:checked {
-                    background-color: #6b1d24;
-                    border: 2px solid #6b1d24;
-                    border-radius: 7px;
-                    width: 10px;
-                    height: 10px;
-                }
-            """)
-        else:
-            frame.setStyleSheet("""
-                QFrame {
-                    background-color: #ffffff;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 8px;
-                }
-                QFrame:hover {
-                    border-color: #cbd5e1;
-                    background-color: #f8fafc;
-                }
-                QRadioButton {
-                    color: #334155;
-                    font-size: 14px;
-                    border: none;
-                }
-            """)
+                btn.setStyleSheet(st.nav_button("default"))
 
     def on_option_selected(self, option_id, checked):
         if checked:
-            #Store choice
             self.user_answers[self.currentQuestion] = option_id
             for idx, frame in enumerate(self.option_frames):
-                self.set_frame_style(frame, is_selected=(idx == option_id))
+                frame.setStyleSheet(st.option_frame(idx == option_id))
             self.update_sidebar()
 
     def handle_next_or_submit(self):
@@ -414,12 +351,11 @@ class QuizApp(QMainWindow):
             }
 
         print("Quiz Submitted!")
-
         return results
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = QuizApp("questions.csv")
+    window = QuizApp("questionsFormat.csv")
     window.show()
     sys.exit(app.exec())
