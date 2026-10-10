@@ -1,6 +1,6 @@
 import sys
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt, pyqtSignal, QRegularExpression
+from PyQt6.QtGui import QColor, QRegularExpressionValidator
 from PyQt6.QtWidgets import (
     QApplication,
     QWidget,
@@ -23,12 +23,15 @@ WINDOW_SIZE = (980, 550)
 LOGIN_THEME = ("#8B2630", "#370404", "#fff")  
 REGISTER_THEME = LOGIN_THEME
  
- 
 def _password_field() -> QLineEdit:
     edit = QLineEdit()
     edit.setEchoMode(QLineEdit.EchoMode.Password)
+    
+    no_space_regex = QRegularExpression(r"^\S*$")
+    validator = QRegularExpressionValidator(no_space_regex, edit)
+    edit.setValidator(validator)
+    
     return edit
- 
  
 def _page_style(c1: str, c2: str, text: str) -> str:
     return f"""
